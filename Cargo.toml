@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "glge",
+    "tja",
+    "tja_player"
+]
