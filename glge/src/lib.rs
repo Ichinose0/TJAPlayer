@@ -1,4 +1,4 @@
-pub(crate) mod context;
+pub mod context;
 pub(crate) mod wgl;
 pub(crate) mod gl;
 
@@ -9,6 +9,28 @@ use winit::{
     window::WindowBuilder,
 };
 use crate::context::Context;
+
+pub struct EventManager {
+    render: Renderer
+}
+
+impl EventManager {
+    pub fn register_all(&self,frames: &[&impl Frame]) {
+        for i in frames {
+            self.render.render(i);
+        }
+    }
+}
+
+pub struct Renderer {
+    ctx: Context
+}
+
+impl Renderer {
+    pub fn render(&self,frame: &&impl Frame) {
+        frame.render(&self.ctx);
+    }
+}
 
 pub struct Application {
     pub title: String,
@@ -31,13 +53,13 @@ pub trait GLGEApplication {
 
     }
     
-    fn event_loop(&mut self) {
+    fn render(&mut self,event: &EventManager) {
 
     }
 }
 
-pub trait RenderObject {
-    fn render();
+pub trait Frame {
+    fn render(&self,ctx: &Context);
 }
 
 pub fn run_app<T>(mut app: T) 
@@ -55,6 +77,13 @@ where
         .unwrap();
 
     let ctx = Context::init(&window);
+    let event_manager = EventManager {
+        render: Renderer {
+            ctx,
+        },
+    };
+
+    let event_ref = &event_manager;
 
     event_loop.run(move |event, elwt| {
         match event {
@@ -63,11 +92,7 @@ where
                 WindowEvent::RedrawRequested => {
                     // Notify the windowing system that we'll be presenting to the window.
                     window.pre_present_notify();
-                    unsafe {
-                        glClearColor(1.0,0.0,0.0,1.0);
-                        glClear(GL_COLOR_BUFFER_BIT);
-                        ctx.swap();
-                    }
+                    app.render(&event_ref);
                 }
                 _ => (),
             },
@@ -78,5 +103,4 @@ where
             _ => (),
         }
     });
-    app.event_loop();
 }

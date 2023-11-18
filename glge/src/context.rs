@@ -1,8 +1,10 @@
 use raw_window_handle::HasWindowHandle;
-use windows_sys::Win32::System::LibraryLoader::LoadLibraryA;
-use std::ffi::c_void;
+use windows_sys::Win32::System::LibraryLoader::{LoadLibraryA, LoadLibraryW};
+use std::ffi::{c_void, CString, OsStr};
 use std::mem::size_of;
+use std::os::windows::ffi::OsStrExt;
 use std::ptr::{addr_of, null, null_mut};
+use windows_sys::core::PCSTR;
 use windows_sys::Win32::Graphics::Gdi::GetDC;
 use windows_sys::Win32::Graphics::OpenGL::{ChoosePixelFormat, GL_TRUE, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_MAIN_PLANE, PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, SetPixelFormat, SwapBuffers};
 
@@ -10,8 +12,9 @@ use crate::wgl;
 use crate::wgl::*;
 use crate::wgl::types::{BYTE, PIXELFORMATDESCRIPTOR, WORD};
 
+#[derive(Clone,Copy,Debug)]
 pub struct Context {
-    func: WGLARBFunction,
+    func: WGLARBFunctions,
     hdc: wgl::extra::types::HDC,
     ctx: wgl::extra::types::HGLRC
 }
@@ -67,9 +70,9 @@ impl Context {
                     WGL_STENCIL_BITS_ARB, 8,
                     0,
                 ];
-                let func = WGLARBFunction::load();
+                let func;
                 let hdc;
-                //let ctx;
+                let ctx;
                 unsafe {
                     hdc = GetDC(windows_sys::Win32::Foundation::HWND::from(handle.hwnd));
                     let pixel_format = ChoosePixelFormat(hdc, addr_of!(pfd) as *const windows_sys::Win32::Graphics::OpenGL::PIXELFORMATDESCRIPTOR);
@@ -89,18 +92,43 @@ impl Context {
                         wgl::extra::CONTEXT_CORE_PROFILE_BIT_ARB,
                         0,
                     ];
-                    //
-                    // ctx =
-                    //     func.CreateContextAttribsARB(hdc as wgl::extra::types::HDC, null_mut(), &att);
-                    //
-                    // wgl::DeleteContext(old_ctx);
+                    func = WGLARBFunctions::load();
+                    println!("Create ctx");
+                    ctx =
+                        (func.wglCreateContextAttribsARB)(hdc as wgl::extra::types::HDC, null_mut(), &att);
+                    println!("Created ctx");
+                    wgl::DeleteContext(old_ctx);
+                    wgl::MakeCurrent(hdc as wgl::types::HDC,ctx);
+                    gl::load_with(|s| {
+                        let addr = CString::new(s.as_bytes()).unwrap();
+                        let addr = addr.as_ptr();
+
+                        let name = OsStr::new("opengl32.dll")
+                            .encode_wide()
+                            .chain(Some(0).into_iter())
+                            .collect::<Vec<_>>();
+
+                        let lib = unsafe { LoadLibraryW(name.as_ptr()) };
+
+                        unsafe {
+                            let p = wgl::GetProcAddress(addr) as *const core::ffi::c_void;
+                            if !p.is_null() {
+                                return p;
+                            }
+                            windows_sys::Win32::System::LibraryLoader::GetProcAddress(lib, addr as PCSTR).unwrap() as *const _
+                        }
+                    });
+
+                    (func.wglSwapIntervalEXT)(0);
+
+                    Self {
+                        func,
+                        hdc: hdc as wgl::extra::types::HDC,
+                        ctx
+                    }
                 }
 
-                Self {
-                    func,
-                    hdc: hdc as wgl::extra::types::HDC,
-                    ctx: 0 as wgl::extra::types::HGLRC
-                }
+
             },
             raw_window_handle::RawWindowHandle::WinRt(_) => panic!("このプラットフォームには対応していません"),
             raw_window_handle::RawWindowHandle::Web(_) => panic!("このプラットフォームには対応していません"),

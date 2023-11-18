@@ -16,32 +16,20 @@ pub type WGLCREATECONTEXTATTRIBSARBPROC = fn(
     attribs: &[extra::types::GLenum],
 ) -> extra::types::HGLRC;
 
-pub type WGLCHOOSEPIXELFORMATARBPROC = fn(
-    hDc: extra::types::HDC,
-    piAttribIList: *const i32,
-    pfAttribFList: *const f64,
-    nMaxFormats: u32,
-    piFormats: *mut i32,
-    nNumFormats: *mut u32
-) -> extra::types::BOOL;
 pub type WGLSWAPINTERVALEXTPROC = fn(i: u32);
-pub struct WGLARBFunction {
-    wglCreateContextAttribsARB: WGLCREATECONTEXTATTRIBSARBPROC,
-    wglChoosePixelFormatARB: WGLCHOOSEPIXELFORMATARBPROC,
-    wglSwapIntervalEXT: WGLSWAPINTERVALEXTPROC,
+
+#[derive(Clone,Copy,Debug)]
+pub struct WGLARBFunctions {
+    pub wglCreateContextAttribsARB: WGLCREATECONTEXTATTRIBSARBPROC,
+    pub wglSwapIntervalEXT: WGLSWAPINTERVALEXTPROC,
 }
 
-impl WGLARBFunction {
+impl WGLARBFunctions {
     pub fn load() -> Self {
         let wglCreateContextAttribsARB: WGLCREATECONTEXTATTRIBSARBPROC = unsafe {
             transmute(GetProcAddress(
                 "wglCreateContextAttribsARB\0".as_ptr() as types::LPCSTR
             ))
-        };
-        let wglChoosePixelFormatARB: WGLCHOOSEPIXELFORMATARBPROC = unsafe {
-          transmute(GetProcAddress(
-              "wglChoosePixelFormatARB\0".as_ptr() as types::LPCSTR
-          ))
         };
         let wglSwapIntervalEXT: WGLSWAPINTERVALEXTPROC = unsafe {
             transmute(GetProcAddress(
@@ -50,19 +38,11 @@ impl WGLARBFunction {
         };
         Self {
             wglCreateContextAttribsARB,
-            wglChoosePixelFormatARB,
             wglSwapIntervalEXT,
         }
     }
-
-    pub unsafe fn CreateContextAttribsARB(&self,hDc: extra::types::HDC,hShareContext: extra::types::HGLRC,attribs: &[extra::types::GLenum]) -> extra::types::HGLRC {
-        (self.wglCreateContextAttribsARB)(hDc,hShareContext,attribs)
-    }
-
-    pub unsafe fn ChoosePixelFormatARB(&self,hdc: HDC,piAttribIList: *const i32,pfAttribFList: *const f64,nMaxFormats: u32,piFormats: *mut i32,nNumFormats: *mut u32) {
-        (self.wglChoosePixelFormatARB)(hdc,piAttribIList,pfAttribFList,nMaxFormats,piFormats,nNumFormats);
-    }
 }
+
 
 include!(concat!(env!("OUT_DIR"), "/wgl.rs"));
 

@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 winit = "0.29.3"
 raw-window-handle = "0.6.0"
-#gsfk = "0.1.0"
+gl = "0.14.0"
 [dependencies.windows-sys]
 version = "0.52.0"
 features = [
