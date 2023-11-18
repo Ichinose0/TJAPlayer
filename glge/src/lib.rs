@@ -1,8 +1,14 @@
+pub(crate) mod context;
+pub(crate) mod wgl;
+pub(crate) mod gl;
+
+use windows_sys::Win32::Graphics::OpenGL::{GL_COLOR_BUFFER_BIT, glClear, glClearColor};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
+use crate::context::Context;
 
 pub struct Application {
     pub title: String,
@@ -30,6 +36,10 @@ pub trait GLGEApplication {
     }
 }
 
+pub trait RenderObject {
+    fn render();
+}
+
 pub fn run_app<T>(mut app: T) 
 where
     T: GLGEApplication
@@ -40,19 +50,24 @@ where
 
     let window = WindowBuilder::new()
         .with_title(app_config.title)
-        .with_inner_size(winit::dpi::LogicalSize::new(128.0, 128.0))
+        .with_inner_size(winit::dpi::LogicalSize::new(800.0,600.0))
         .build(&event_loop)
         .unwrap();
 
-    event_loop.run(move |event, elwt| {
-        println!("{event:?}");
+    let ctx = Context::init(&window);
 
+    event_loop.run(move |event, elwt| {
         match event {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => elwt.exit(),
                 WindowEvent::RedrawRequested => {
                     // Notify the windowing system that we'll be presenting to the window.
                     window.pre_present_notify();
+                    unsafe {
+                        glClearColor(1.0,0.0,0.0,1.0);
+                        glClear(GL_COLOR_BUFFER_BIT);
+                        ctx.swap();
+                    }
                 }
                 _ => (),
             },
