@@ -36,8 +36,8 @@ fn main() {
             "WGL_EXT_swap_control",
         ],
     )
-        .write_bindings(gl_generator::StructGenerator, &mut wgl_extra)
-        .unwrap();
+    .write_bindings(gl_generator::StructGenerator, &mut wgl_extra)
+    .unwrap();
     Registry::new(Api::Gl, (4, 6), Profile::Core, Fallbacks::All, [])
         .write_bindings(GlobalGenerator, &mut gl)
         .unwrap();

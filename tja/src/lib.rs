@@ -1,11 +1,18 @@
-use std::{fs::File, io::{Error, Read, BufReader, BufRead}};
+#[macro_use]
+extern crate log;
+use log::Level;
+
+use std::{
+    fs::File,
+    io::{BufRead, BufReader, Error, Read},
+};
 
 pub enum Course {
     Easy,
     Normal,
     Hard,
     Oni,
-    Edit
+    Edit,
 }
 
 impl From<u8> for Course {
@@ -23,7 +30,7 @@ impl From<u8> for Course {
 
 pub struct Score {
     score_string: String,
-    measure: u32
+    measure: u32,
 }
 
 pub struct TJA {
@@ -34,20 +41,25 @@ pub struct TJA {
     wave: File,
     songvol: u8,
     sevol: u8,
-    course: Course   
+    course: Course,
 }
 
 impl TJA {
-    pub fn load(path: &str) -> Result<Self,Error> {
+    pub fn load(path: &str) -> Result<Self, Error> {
         let mut title = String::new();
         let mut sub_title = String::new();
         let mut wave = String::new();
 
         let mut f = match File::open(path) {
             Err(e) => {
+                error!("\n{:#?}", e);
                 return Err(e);
             }
-            Ok(t) => t
+            Ok(t) => {
+                info!("Entered File path: {}", path);
+                debug!("Entered File: {:#?}", t);
+                t
+            }
         };
 
         let mut tja = vec![];
@@ -66,7 +78,7 @@ impl TJA {
         let mut start = 0;
         let mut end = 0;
 
-        for (i,items) in tja.iter().enumerate() {
+        for (i, items) in tja.iter().enumerate() {
             if items.as_bytes()[0] as char == 'T' {
                 if &items[..5] == "TITLE" {
                     title = items[6..].to_owned();
@@ -84,61 +96,67 @@ impl TJA {
             }
             if &items[..] == "#START" {
                 if start == 0 {
-                    start = i+1;
+                    start = i + 1;
                 } else {
                     panic!("エラー：#STARTが複数回定義されています。");
                 }
             }
             if &items[..] == "#END" {
                 if end == 0 {
-                    end = i-1;
+                    end = i - 1;
                 } else {
                     panic!("エラー：#ENDが複数回定義されています。");
                 }
             }
         }
 
-        println!("{}",title);
-        println!("{}",sub_title);
-        println!("{}",wave);
-        if title.is_empty() { panic!("エラー:タイトルタグが定義されていません。") };
-        let wave = match File::open(wave) {
+        if title.is_empty() {
+            panic!("エラー:タイトルタグが定義されていません。")
+        };
+        let wave_f = match File::open(&wave) {
             Err(e) => {
                 return Err(e);
             }
-            Ok(t) => t
+            Ok(t) => t,
         };
 
-        let  score = Self::create_score(&tja,start,end);
+        info!("Score informations:");
+        info!("TITLE:{}", title);
+        info!("SUBTITLE:{}", sub_title);
+        info!("WAVE:{}", wave);
+
+        let score = Self::create_score(&tja, start, end);
 
         Ok(Self {
             title,
             sub_title,
             level: 10,
             bpm: 135,
-            wave,
+            wave: wave_f,
             songvol: 100,
             sevol: 100,
             course: Course::Oni,
         })
     }
 
-    fn create_score(tja: &Vec<String>,start: usize,end: usize) -> Score {
+    fn create_score(tja: &Vec<String>, start: usize, end: usize) -> Score {
+        info!("Start composing the score");
         let mut measure = 1;
         let tja = &tja[start..end];
         for i in tja {
             let bytes = i.as_bytes();
-            for (i,&items) in bytes.iter().enumerate() {
+            for (i, &items) in bytes.iter().enumerate() {
                 if items == b',' {
                     measure += 1;
                 }
             }
         }
-        println!("Measure: {}",measure);
+
+        info!("The score consists of a total of {} measures", measure);
 
         Score {
             score_string: String::new(),
-            measure
+            measure,
         }
     }
 
